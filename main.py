@@ -1,1 +1,3 @@
-print("Meow")
+def TestingFunc():
+    return "meow"
+print(TestingFunc())
