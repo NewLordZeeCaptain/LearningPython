@@ -1,6 +1,0 @@
-path = input('Input filename pls: ')
-testingFile = open(rf'./{path}',"w+")
-print(testingFile.read())
-addedTest = input("If you would like to write something in file, paste it here, if not just paste NO: ")
-testingFile.write(addedTest)
-print(testingFile.read())
