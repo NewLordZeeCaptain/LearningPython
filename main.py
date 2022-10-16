@@ -9,7 +9,8 @@ sql.execute(
     CREATE TABLE IF NOT EXISTS telegram_users (
     user_ID INT,
     user_firstname TEXT,
-    user_lastname TEXT
+    user_lastname TEXT,
+    user_registrated BOOL
 
     )
     """
@@ -22,6 +23,8 @@ persons = dict()
 
 
 class User:
+    user_registrated = False
+
     def __init__(self, user_id, first_name, last_name) -> None:
         self.user_id = user_id
         self.first_name = first_name
@@ -33,8 +36,8 @@ class User:
     def addtoDB(self):
         if sql.fetchone() is None:
             sql.execute(
-                "INSERT INTO telegram_users VALUES (?,?,?)",
-                (self.user_id, self.first_name, self.last_name),
+                "INSERT INTO telegram_users VALUES (?,?,?,?)",
+                (self.user_id, self.first_name, self.last_name, self.user_registrated),
             )
             db.commit()
         else:
@@ -63,7 +66,47 @@ def start(message):
 @bot.message_handler(commands=["person"])
 def get_stored_data(message):
     for value in sql.execute("SELECT * FROM telegram_users"):
-        bot.send_message(message.chat.id, value[2])
+        bot.send_message(message.chat.id, value[3])
+
+
+@bot.message_handler(commands=["delete"])
+def delete_me(message):
+    sql.execute("DELETE FROM telegram_users WHERE user_ID=(?)", (message.from_user.id,))
+    db.commit()
+    bot.send_message(message.chat.id, "You has being deleted")
+
+
+@bot.message_handler(commands=["join"])
+def registration(message):
+
+    sql.execute(
+        "UPDATE telegram_users SET (user_registrated) = (1) WHERE user_ID=(?)",
+        (message.from_user.id,),
+    )
+    db.commit()
+    bot.send_message(message.chat.id, "You're registrated")
+
+
+@bot.message_handler(command=["joined"])
+def test_registration(message):
+    bot.send_message(message.chat.id, "Test")
+    a = str(
+        sql.execute(
+            "SELECT user_registrated FROM telegram_users WHERE user_ID=(?)",
+            (message.from_user.id,),
+        )
+    )
+    bot.send_message(message.chat.id, a)
+
+
+@bot.message_handler(command=["unjoin"])
+def remove_registration(message):
+    sql.execute(
+        "UPDATE telegram_users SET (user_registrated) = (1) WHERE user_ID=(?)",
+        (message.from_user.id,),
+    )
+    db.commit()
+    bot.send_message(message.chat.id, "You're registration has been removed")
 
 
 bot.polling(non_stop=True)
