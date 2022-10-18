@@ -15,8 +15,9 @@ sql.execute(
     )
     """
 )
+API_TOKEN = "InsertYourAPIToken"
 db.commit()
-bot = telebot.TeleBot("5588570551:AAHWgQOIoHj2KIaBsRYbzsH4IOPc_VOGhwA")
+bot = telebot.TeleBot(API_TOKEN)
 
 
 persons = dict()
