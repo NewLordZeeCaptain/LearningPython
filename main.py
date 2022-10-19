@@ -1,113 +1,61 @@
-import telebot
-import sqlite3
+from pprint import pprint
+from config import open_weather_token
+import requests
+import datetime
 
-db = sqlite3.connect("Server.db", check_same_thread=False)
-sql = db.cursor()
+def get_weather (city,open_weather_token):
 
-sql.execute(
-    """
-    CREATE TABLE IF NOT EXISTS telegram_users (
-    user_ID INT,
-    user_firstname TEXT,
-    user_lastname TEXT,
-    user_registrated BOOL
+    code_to_smile = {
+        "Clear": "Ясно \U00002600",
+        "Clouds": "Облачно \U00002601",
+        "Rain": "Дождь \U00002614",
+        "Drizzle": "Дождь \U00002614",
+        "Thunderstorm": "Гроза \U000026A1",
+        "Snow": "Снег \U0001F328",
+        "Mist": "Туман \U0001F32B"
+    }
 
-    )
-    """
-)
-API_TOKEN = "InsertYourAPIToken"
-db.commit()
-bot = telebot.TeleBot(API_TOKEN)
-
-
-persons = dict()
-
-
-class User:
-    user_registrated = False
-
-    def __init__(self, user_id, first_name, last_name) -> None:
-        self.user_id = user_id
-        self.first_name = first_name
-        self.last_name = last_name
-
-    def getData(self):
-        return f"FirstName: {self.first_name}\nLastName: {self.last_name}"
-
-    def addtoDB(self):
-        if sql.fetchone() is None:
-            sql.execute(
-                "INSERT INTO telegram_users VALUES (?,?,?,?)",
-                (self.user_id, self.first_name, self.last_name, self.user_registrated),
-            )
-            db.commit()
-        else:
-            pass
-
-
-@bot.message_handler(commands=["start"])
-def start(message):
-    newUser = User(
-        message.from_user.id, message.from_user.first_name, message.from_user.last_name
-    )
-    newUser.addtoDB()
-
-    mess = f"Hello, <b>{message.from_user.first_name} <u>{message.from_user.last_name}</u></b>"
-    bot.send_message(message.chat.id, mess, parse_mode="html")
-
-
-# @bot.message_handler()
-# def get_user_texxt(message):
-#     if message.text == "hello":
-#         bot.send_message(message.chat.id, "Hi, bro!", parse_mode="html")
-#     elif message.text == "id":
-#         bot.send_message(message.chat.id, f"Your id: {message.from_user.id}")
-
-
-@bot.message_handler(commands=["person"])
-def get_stored_data(message):
-    for value in sql.execute("SELECT * FROM telegram_users"):
-        bot.send_message(message.chat.id, value[3])
-
-
-@bot.message_handler(commands=["delete"])
-def delete_me(message):
-    sql.execute("DELETE FROM telegram_users WHERE user_ID=(?)", (message.from_user.id,))
-    db.commit()
-    bot.send_message(message.chat.id, "You has being deleted")
-
-
-@bot.message_handler(commands=["join"])
-def registration(message):
-
-    sql.execute(
-        "UPDATE telegram_users SET (user_registrated) = (1) WHERE user_ID=(?)",
-        (message.from_user.id,),
-    )
-    db.commit()
-    bot.send_message(message.chat.id, "You're registrated")
-
-
-@bot.message_handler(command=["joined"])
-def test_registration(message):
-    bot.send_message(message.chat.id, "Test")
-    a = str(
-        sql.execute(
-            "SELECT user_registrated FROM telegram_users WHERE user_ID=(?)",
-            (message.from_user.id,),
+    try:
+        r = requests.get(
+            f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={open_weather_token}&units=metric&lang=ru'
         )
-    )
-    bot.send_message(message.chat.id, a)
+        data = r.json()
+        # pprint(data)
+
+        city = data["name"]
+        cur_weather = data["main"]["temp"]
+
+        weather_description = data["weather"][0]["main"]
+        if weather_description in code_to_smile:
+            wd = code_to_smile[weather_description]
+        else:
+            wd = "Сам посмотри"
+
+        humidity = data["main"]["humidity"]
+        pressure = data["main"]["pressure"]
+        wind = data["wind"]["speed"]
+        sunrise_timestamp = datetime.datetime.fromtimestamp(data["sys"]["sunrise"])
+        sunset_timestamp = datetime.datetime.fromtimestamp(data["sys"]["sunset"])
+        length_of_the_day = datetime.datetime.fromtimestamp(data["sys"]["sunset"]) - datetime.datetime.fromtimestamp(data["sys"]["sunrise"])
+        print(f"Сегодня: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+              f"Погода в городе: {city}\n"
+              f"Температура: {cur_weather} {wd}\n"
+              f"Влажность: {humidity}\n"
+              f"Давление: {pressure}\n"
+              f"Скорость ветра: {wind}\n"
+              f"Время восхода: {sunrise_timestamp}\n"
+              f"Время заката: {sunset_timestamp}\n"
+              f"Продолжительность часового дня: {length_of_the_day}")
 
 
-@bot.message_handler(command=["unjoin"])
-def remove_registration(message):
-    sql.execute(
-        "UPDATE telegram_users SET (user_registrated) = (1) WHERE user_ID=(?)",
-        (message.from_user.id,),
-    )
-    db.commit()
-    bot.send_message(message.chat.id, "You're registration has been removed")
 
+    except Exception as ex:
+        print(ex)
+        print("Неверное название города")
 
-bot.polling(non_stop=True)
+def main():
+    city = input("Введите город: ")
+    get_weather(city,open_weather_token)
+
+if __name__ == '__main__':
+    main()
